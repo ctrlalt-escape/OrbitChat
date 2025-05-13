@@ -1,78 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chat</title>
   <style>
     body {
-      background-color: #0b1f3a;
-      color: #ffffff;
+      margin: 0;
       font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #0b1f3a, #142c4f);
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      height: 100vh;
-      margin: 0;
+      align-items: center;
+      justify-content: center;
     }
+
+    .chat-container {
+      width: 90%;
+      max-width: 600px;
+      height: 90vh;
+      background: rgba(12, 25, 44, 0.6);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
     #chat-box {
       flex: 1;
       overflow-y: auto;
       padding: 20px;
-      border-bottom: 1px solid #1e3a5f;
+      color: #e0f0ff;
+      scroll-behavior: smooth;
     }
+
     .message {
-      margin-bottom: 15px;
+      margin-bottom: 12px;
+      padding: 10px 15px;
+      background-color: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      max-width: 85%;
+      word-wrap: break-word;
+      transition: all 0.3s ease;
     }
-    .username {
+
+    .message .username {
       font-weight: bold;
-      color: #81a8cd;
+      color: #88c0ff;
     }
+
     #input-area {
       display: flex;
-      padding: 10px;
-      background-color: #102d4a;
+      padding: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(12, 25, 44, 0.7);
     }
-    input, button {
-      padding: 10px;
-      border: none;
-      outline: none;
-      border-radius: 5px;
-      font-size: 1em;
-    }
+
     #message-input {
       flex: 1;
-      background-color: #1a3a5d;
-      color: white;
+      padding: 12px;
+      font-size: 1em;
+      border-radius: 10px;
+      border: none;
+      background-color: #1c2e47;
+      color: #fff;
       margin-right: 10px;
     }
+
     #send-button {
-      background-color: #1f5f8b;
-      color: white;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    #send-button:hover {
+      padding: 12px 20px;
       background-color: #347cbf;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    #send-button:hover {
+      background-color: #4a9de0;
     }
   </style>
 </head>
 <body>
 
-<div id="chat-box"></div>
-<div id="input-area">
-  <input type="text" id="message-input" placeholder="Type a message..." />
-  <button id="send-button">Send</button>
+<div class="chat-container">
+  <div id="chat-box"></div>
+  <div id="input-area">
+    <input type="text" id="message-input" placeholder="Type a message..." />
+    <button id="send-button">Send</button>
+  </div>
 </div>
 
 <script>
-  const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbwRw5uSLfrrz-21Xynl8DNIMBkBhFJUrC9LX5vgi_Jp82Ck45XXk38xDlHCtAexqymOxg/exec'; // Replace with your Apps Script web app URL
+  const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbwRw5uSLfrrz-21Xynl8DNIMBkBhFJUrC9LX5vgi_Jp82Ck45XXk38xDlHCtAexqymOxg/exec'; // <-- Replace with your Apps Script Web App URL
+
   const chatBox = document.getElementById("chat-box");
   const messageInput = document.getElementById("message-input");
   const sendButton = document.getElementById("send-button");
 
   let username = localStorage.getItem("chat-username");
   if (!username) {
-    username = prompt("Enter your name:");
-    localStorage.setItem("chat-username", username || "Anonymous");
+    username = prompt("Enter your name:") || "Anonymous";
+    localStorage.setItem("chat-username", username);
   }
 
   function escapeHTML(str) {
@@ -81,32 +114,45 @@
     return div.innerHTML;
   }
 
-  function fetchMessages() {
-    fetch(SHEET_API_URL)
-      .then(res => res.json())
-      .then(data => {
-        chatBox.innerHTML = "";
-        data.forEach(msg => {
-          const msgDiv = document.createElement("div");
-          msgDiv.className = "message";
-          msgDiv.innerHTML = `<span class="username">${escapeHTML(msg.username)}</span>: ${escapeHTML(msg.message)}`;
-          chatBox.appendChild(msgDiv);
-        });
-        chatBox.scrollTop = chatBox.scrollHeight;
+  async function fetchMessages() {
+    try {
+      const res = await fetch(SHEET_API_URL);
+      const data = await res.json();
+      chatBox.innerHTML = "";
+      data.forEach(msg => {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = "message";
+        msgDiv.innerHTML = `<span class="username">${escapeHTML(msg.username)}:</span> ${escapeHTML(msg.message)}`;
+        chatBox.appendChild(msgDiv);
       });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (error) {
+      console.error("Fetch failed:", error);
+    }
   }
 
-  function sendMessage() {
+  async function sendMessage() {
     const msg = messageInput.value.trim();
     if (!msg) return;
-    fetch(SHEET_API_URL, {
-      method: "POST",
-      body: JSON.stringify({ username, message: msg }),
-      headers: { "Content-Type": "application/json" }
-    }).then(() => {
+
+    const payload = {
+      username,
+      message: msg
+    };
+
+    try {
+      const res = await fetch(SHEET_API_URL, {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      });
+      if (!res.ok) throw new Error("Send failed");
       messageInput.value = "";
       fetchMessages();
-    });
+    } catch (error) {
+      console.error("Send failed:", error);
+      alert("Message failed to send.");
+    }
   }
 
   sendButton.onclick = sendMessage;
@@ -114,7 +160,7 @@
     if (e.key === "Enter") sendMessage();
   });
 
-  setInterval(fetchMessages, 500); // Poll every 3 seconds
+  setInterval(fetchMessages, 3000);
   fetchMessages();
 </script>
 
